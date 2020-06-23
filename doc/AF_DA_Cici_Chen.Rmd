@@ -1,0 +1,366 @@
+---
+title: "AF DATA ANALYSIS"
+author: "Chen(Cici) Chen cc4291@columbia.edu"
+date: "1/2/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, echo=F, message=F}
+if(!require("plyr")) install.packages("plyr")
+if(!require("dplyr")) install.packages("dplyr")
+if(!require("tidyr")) install.packages("tidyr")
+if(!require("ggplot2")) install.packages("ggplot")
+if(!require("tidyverse")) install.packages("tidyverse")
+if(!require("ggthemes")) install.packages("ggthemes")
+if(!require("gghighlight")) install.packages("gghighlight")
+if(!require("RColorBrewer")) install.packages("RColorBrewer")
+if(!require("packcircles")) install.packages("packcircles")
+if(!require("knitr")) install.packages("knitr")
+if(!require("kableExtra")) install.packages("kableExtra")
+if(!require("readxl")) install.packages("readxl")
+```
+
+# Goal 
+The goal of this analysis is to research the potential trend and results of the students from two AF middle schools: **Bushwick Middle School** and **Crown Heights Middle School**. In order to close the achievement gap for the students who have low performance within the neighborhoods, AF will utilize the results of this analysis as a reference to deliver equal educational opportunities for all the students regardless of their race and economic status. Beyond this analysis, AF as an engaged parter in the community will take this exercise as an example to discuss how to improve public education quality and enhance the students' academic performance in the larger conversation.
+
+# Introduction
+The original dataset contains the information of students' **School Name**, **Grade level(5th, 6th)**, the student's beginning of year (**BOY**) and end of year (**EOY**) F&P reading scores.
+
+```{r read.data, echo=F}
+dat<-read_excel("F&P Sample Data Set.xlsx",sheet = 1)
+dat<-data.frame(dat)
+```
+
+```{r clear data, echo=F}
+dat.na<-rbind(dat[is.na(dat$BOY.F.P.Score),],dat[is.na(dat$EOY.F.P.Score),])
+# omit na
+dat<-na.omit(dat)
+# omit the possible outlier
+dat<-dat[dat$BOY.F.P.Score!=0,] 
+```
+
+To begin with, I deleted the dataset with missing values and the potential entry error of the dataset. It is of great importance to deal with those missing values and outliers, and after a careful check, I find that moving those values will not influence the big picture of our dataset. Take **BOY F&P Score** as an example(it is the column where most N/A comes from), the average of the score has a minor difference as you can be seen from the following result: With N/A mean=12 and without N/A= 12.9478, and the difference is 0.947761, which is small.
+
+```{r na.compare, echo=F, eval=F}
+mean(dat$BOY.F.P.Score)
+mean(dat.na$BOY.F.P.Score, na.rm=T)
+mean(dat$BOY.F.P.Score)-mean(dat.na$BOY.F.P.Score, na.rm=T)
+```
+
+To better analyze the data, we need to clear up the dataset first before further analysis. I converted F&P scores to the corresponding F&P proficiency levels and rewrote the Grade levels/School names to a consistent format.
+
+```{r clear.format, echo=F}
+# unique(data[,2])
+dat$School.Name[dat$School.Name=="Bushwick MS"]<-"Bushwick Middle School"
+dat$School.Name[dat$School.Name=="Crown Hghts Middle School" ]<-"Crown Heights Middle School"
+# unique(dat[,2])
+
+#unique(data$Grade.Level)
+dat$Grade.Level[dat$Grade.Level=="5th"]<-"5.0"
+dat$Grade.Level[dat$Grade.Level=="6th"]<-"6.0"
+# unique(dat$Grade.Level)
+```
+
+```{r convertion, echo=F}
+# 5th
+   temp1=dat[dat$Grade.Level=="5.0",]
+
+for (i in dim(temp1)[1]){
+   temp1$BOY.PL<-ifelse(temp1$BOY.F.P.Score<=9,"Remedial",
+                        ifelse(temp1$BOY.F.P.Score<=11,"Below Proficient",
+                               ifelse(temp1$BOY.F.P.Score<=13,"Proficient", "Advanced")))
+   temp1$EOY.PL<-ifelse(temp1$EOY.F.P.Score<=11,"Remedial",
+                        ifelse(temp1$EOY.F.P.Score<=13,"Below Proficient",
+                               ifelse(temp1$EOY.F.P.Score<=15,"Proficient", "Advanced")))}
+# 6th
+   temp2=dat[dat$Grade.Level=="6.0",]
+   
+   for (i in dim(dat)[1]){
+   temp2$BOY.PL<-ifelse(temp2$BOY.F.P.Score<=11,"Remedial",
+                     ifelse(temp2$BOY.F.P.Score<=13,"Below Proficient",
+                            ifelse(temp2$BOY.F.P.Score<=15,"Proficient", "Advanced")))
+   temp2$EOY.PL<-ifelse(temp2$EOY.F.P.Score<=13,"Remedial",
+                     ifelse(temp2$EOY.F.P.Score<=15,"Below Proficient",
+                            ifelse(temp2$EOY.F.P.Score<=17,"Proficient", "Advanced")))}
+# Get the clearup data with proficiency level attached.
+new<-rbind(temp1,temp2)
+new$BOY.PL<-factor(new$BOY.PL, levels=c("Advanced","Proficient","Below Proficient","Remedial"))
+new$EOY.PL<-factor(new$EOY.PL, levels=c("Advanced","Proficient","Below Proficient","Remedial"))
+```
+
+Now, the following shows how our dataset looks like:
+
+```{r, warning=F, message=F,error=F, echo=F}
+kable(head(new), "latex", booktabs = T) %>% kable_styling(latex_options =c("striped","scale_down"))
+```
+
+```{r prep, echo=F}
+BM<-new[new$School.Name=="Bushwick Middle School",]
+CH<-new[new$School.Name=="Crown Heights Middle School",]
+
+new$before<-ifelse(new$BOY.PL=="Advanced",1,
+                        ifelse(new$BOY.PL=="Proficient",2,
+                               ifelse(new$BOY.PL=="Below Proficient",3, 4)))
+new$after<-ifelse(new$EOY.PL=="Advanced",1,
+                        ifelse(new$EOY.PL=="Proficient",2,
+                               ifelse(new$EOY.PL=="Below Proficient",3, 4)))
+new$result<-ifelse(new$before>new$after,"Improve",ifelse(new$before<new$after,"Decline","Maintain"))
+```
+
+Additionally, this graph indicates the distribution of the number of students in each middle school. It is easy to see that most students in our analysis come from Bushwick Middle School and 5th grade of Crown Heights Middle School, and only a few students(15) come from 6th grade of Crown Heights Middle School. 
+
+As such, we need to consider the percentage of the students in the following analysis rather than numbers themselves to avoid the bias caused by the difference of total number of the students.
+
+```{r, echo=F, fig.align='center', fig.height=3}
+g1<-data.frame(table(new$Grade.Level,new$School.Name)) 
+g1$Var2<-c("Bushwick 5th: 86","Bushwick 6th: 94","Crown Heights 5th: 73","Crown Heights 6th: 15")
+g1<-g1[,-1]
+packing <- circleProgressiveLayout(g1$Freq, sizetype='area')
+data <- cbind(g1, packing)
+dat.gg <- circleLayoutVertices(packing, npoints=50)
+
+ggplot() + 
+  geom_polygon(data = dat.gg, aes(x, y, group = id, fill=as.factor(id)), colour = "black", alpha = 0.5) +
+  geom_text(data = data, aes(x, y, size=Freq, label = data$Var2)) +
+  scale_size_continuous(range = c(1,3)) +
+  theme_void() + 
+  theme(legend.position="none", plot.title = element_text(hjust = 0.5)) +
+  coord_equal()+labs(title="Students Distribution of Two AF Schools")
+```
+
+Let's get more detailed information at some statistics from our dataset, which shows that the mean of the F&P scores is generally improved after one-year education, no matter which school and grade the student is.
+
+```{r, echo=F, message=F}
+tb<-new %>% group_by("School Name"=School.Name,Grade=Grade.Level) %>% 
+  summarize(Count=n(),
+       "BOY Mean"=round(mean(BOY.F.P.Score),2),
+       "EOY Mean"=round(mean(EOY.F.P.Score),2),
+       "BOY Max"=max(BOY.F.P.Score),"EOY Max"=max(EOY.F.P.Score),
+       "BOY Min"=min(BOY.F.P.Score),"EOY Min"=min(EOY.F.P.Score))
+kable(tb, "latex", booktabs = T) %>% kable_styling(latex_options =c("striped","scale_down"))
+```
+
+# Analysis
+## Part 1: Two Schools Has Both Improved in Readings
+
+Based on the F&P reading scores and the following boxplots, the medians of Bushwick Middle School and Crown Heights Middle School were improved, which indicates that the students have improved their readings.
+
+```{r,echo=F, fig.align='center', fig.height=3.2}
+new.2<-new[order(new$School.Name),]
+new.2<-data.frame(School=c(new.2$School.Name,new.2$School.Name),
+                  Score=c(new.2$BOY.F.P.Score,new.2$EOY.F.P.Score),
+                  Status=c(rep("BOY",dim(new.2)[1]),rep("EOY",dim(new.2)[1])),
+                  grade=c(new.2$Grade.Level,new.2$Grade.Level))
+new.2$grade<-ifelse(new.2$grade=="5.0","5th","6th")
+ggplot(new.2, aes(x=School, y=Score, color=Status)) + geom_boxplot() + 
+  labs(title="Boxplots for Two Schools")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+We can have the similar result from the boxplot for two schools of 5th and 6th grade: The median of Bushwick Middle School increased more compared to the median of Crown Heights Middle School within each grade level, which shows that the students of Bushwick Middle School have improved their reading abilities faster than the students of Crown Heights Middle School.
+
+```{r, echo=F, fig.align='center', fig.height=3.5}
+ggplot(new.2, aes(x=grade, y=Score, color=Status)) + geom_boxplot() +facet_wrap(~School) +
+  labs(title="Boxplots for Two Schools of 5th and 6th Grade", x="Grade")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Part 2: Performance Compare Schools and Grades Indicates the Difference in Readings
+
+In this section, I will discuss more within 5th and 6th grades in two middle schools based on their F&P Proficiency Levels. As two middle schools have different numbers of students in each grade, I will consider the corresponding percentage rather than numbers. 
+
+As the primary metric for performance, we will consider the students who are **Proficient** or **Advanced** as **Good Performance**, and the students who are **Below Proficient** or **Remedial** as **Bad Performance**.
+
+Here is a summary of our proficiency levels in two middle schools:
+
+| | BOY of Bushwick| BOY of Crown Heights|EOY of Bushwick|EOY of Crown Heights|
+| ------------ | --------- | -------- |---------|--------|
+|         Advanced |                     25 |                          45 |71 |                          37 |
+|       Proficient |                     62 |                          32 |58 |                          32 |
+| Below Proficient |                     68 |                           8 |32 |                          16 |
+|         Remedial |                     25 |                           3 |19 |                           3 |
+
+According to the F&P proficiency levels, I created the bar plots to compare the performance of the students. 
+
+For Bushwick Middle School, good performance students rate increase from **13.89%+34.44%=48.33%** to **39.44%+32.22%=71.67%**, which also reflects the numbers in the "Good Performance Rate" table after.
+ 
+For Crown Heights Middle School, there is **51.14%+36.36%=87.50%** of the students perform well at the beginning of the year, and after one year, there is only **42.05%+36.36%=78.41%** of the students performs well.
+
+As such, the students of Bushwick Middle School performs better than the students of Crowns Heights Middle School after one-year training of readings, because the area of blue and light blue in the barplot of Bushwick Middle School becomes larger compared to the blue and lightblue area change of Crown Heights Middle School.
+
+```{r, echo=F, fig.align='center', fig.height=5}
+tb.boy<-rbind(data.frame(round(table(BM$BOY.PL)/dim(BM)[1]*100,2), School=rep("Bushwick Middle School",4)),
+      data.frame(round(table(CH$BOY.PL)/dim(CH)[1]*100,2), School=rep("Crown Heights Middle School",4)))
+
+tb.eoy<-rbind(data.frame(round(table(BM$EOY.PL)/dim(BM)[1]*100,2), School=rep("Bushwick Middle School",4)),
+      data.frame(round(table(CH$EOY.PL)/dim(CH)[1]*100,2), School=rep("Crown Heights Middle School",4)))
+
+tb<-data.frame(rbind(tb.boy,tb.eoy),Status=c(rep("BOY",8),rep("EOY",8)))
+
+ggplot(tb, aes(x = Status, y = Freq, fill = Var1)) +geom_col() +
+  geom_text(aes(label = paste0(Freq, "%")), position = position_stack(vjust = 0.5),color="black", size=3.5) +
+  theme(legend.position = "right", legend.title = element_blank(),
+        axis.title.y = element_text(margin = margin(r = 20)),
+        plot.title = element_text(hjust = 0.5)) +
+  ylab("Percentage") +labs(title="Performance of Two Middle Schools") +facet_wrap(~School) +
+  # scale_fill_economist()
+  scale_fill_manual(values=c("#2166AC","#92C5DE","#F4A582" ,"#FDDBC7"))
+```
+
+```{r,echo=F, eval=F}
+# CH
+mean(CH$BOY.PL=="Advanced" |CH$BOY.PL=="Proficient") 
+mean(CH$EOY.PL=="Advanced" |CH$EOY.PL=="Proficient")
+# BM
+mean(BM$BOY.PL=="Advanced" |BM$BOY.PL=="Proficient") 
+mean(BM$EOY.PL=="Advanced" |BM$EOY.PL=="Proficient")
+```
+
+The good performance rate table shows the same result as the barplot above.
+
+| Good Performance Rate |BOY|EOY|Comparison|
+|-----|---|---|-----|
+|Crown Heights Middle School|87.50%|78.41%| Decrease|
+|Bushwick Middle School| 48.33%  | 71.67%| Increase|
+
+Then we look into the grades to see which grade of Bushwick Middle School performs better(the percentage of the students who are advanced and proficient becomes larger). 
+
+From the graph, the 6th grade of Bushwick Middle School has the largest improvement from **15.96%** to **61.7%**, and the 5th grader of Bushwick Middle School has the least improvement from **11.63%** to **15.12%**. However, Crown Heights Middle School has a minor decrease in good performance rate in both the 5th and 6th grades.
+
+There is one point we need to notice: in both 5th and 6th grade of Crown Heights Middle School, the persentage of the students who are bad performance becomes larger after one year, and it will be essential for use to find out the reasons after.
+
+```{r, echo=F, fig.align='center', fig.height=5.5}
+tb<-rbind(data.frame(prop.table(table(BM$Grade.Level,BM$BOY.PL),1)),
+      data.frame(prop.table(table(BM$Grade.Level,BM$EOY.PL),1)),
+      data.frame(prop.table(table(CH$Grade.Level,CH$BOY.PL),1)),
+      data.frame(prop.table(table(CH$Grade.Level,CH$EOY.PL),1)))
+tb$Freq<-round(tb$Freq*100,2)
+tb$Var1<-ifelse(tb$Var1=="5.0","5th Grade","6th Grade")
+tb<-cbind(tb,School=c(rep("Bushwick Middle School",16),rep("Crown Heights Middle School",16)),
+          Status=c(rep("BOY",8),rep("EOY",8),rep("BOY",8),rep("EOY",8)))
+colnames(tb)<-c("Grade","Proficiency Level","Frequency","School","Status")
+
+ggplot(tb, aes(x = Status, y = Frequency, fill = `Proficiency Level`)) +
+  geom_col() +
+  geom_text(aes(label = paste0(Frequency, "%")),
+            position = position_stack(vjust = 0.5),color="black", size=2.5)  +
+  theme(legend.position = "right", legend.title = element_blank(),
+        axis.title.y = element_text(margin = margin(r = 20)),
+        plot.title = element_text(hjust = 0.5)) + 
+  ylab("Percentage") +labs(title="Performance of Two Middle Schools of 5th and 6th Grade") +facet_grid(Grade~School)  +
+  scale_fill_manual(values=c("#2166AC","#92C5DE","#F4A582" ,"#FDDBC7"))
+```
+
+## Part 3: Achievement Gaps Becomes Closer
+
+In the following, I defined the **Score Difference/Gap** as the score difference between **BOY F&P score** and **EOY F&P score**: the larger the gap is, the better the improvement is. In the following four density plots, if the position of the line of the mean gap is on the right more, the improvement is more siginficant, and the **Achievement Gaps** becomes closer.
+
+|                 School Name  | Grade Level| Mean of Score Difference/Gaps|
+|----|--|---|---|
+|       Bushwick Middle School | 5th | 2.523256|
+|                               | 6th | 4.138298|
+|  Crown Heights Middle School |  5th |1.739726|
+|                              | 6th |0.533333|
+
+```{r, echo=F, fig.align='center', fig.height=4.5}
+BM.5<-BM[BM$Grade.Level=="5.0",]
+BM.6<-BM[BM$Grade.Level=="6.0",]
+CH.5<-CH[CH$Grade.Level=="5.0",]
+CH.6<-CH[CH$Grade.Level=="6.0",]
+
+dat<-rbind(data.frame(School=rep("Bushwick MS",86),
+                 grade=rep("5th Grade",86),gap=BM.5$EOY.F.P.Score-BM.5$BOY.F.P.Score),
+      data.frame(School=rep("Crown Heights MS",73),
+                 grade=rep("5th Grade",73),gap=CH.5$EOY.F.P.Score-CH.5$BOY.F.P.Score),
+      data.frame(School=rep("Bushwick MS",94),
+                 grade=rep("6th Grade",94),gap=BM.6$EOY.F.P.Score-BM.6$BOY.F.P.Score),
+      data.frame(School=rep("Crown Heights MS",15),
+                 grade=rep("6th Grade",15),gap=CH.6$EOY.F.P.Score-CH.6$BOY.F.P.Score))
+cdat <- ddply(dat, .(School,grade), summarise, gap.mean=mean(gap))
+
+ggplot(dat, aes(x=gap, fill=School)) +
+    geom_density(alpha=.5) +
+    theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom")+
+    labs(title="Score Difference/Gaps in Two Schools of 5th and 6th Grade ", x="Gap",y=" ")+
+    geom_vline(data=cdat, aes(xintercept=gap.mean,colour=School),linetype="dashed",size=1)+
+    facet_grid(School~grade)
+```
+
+Generally speaking, all four lines are positive, which means that they have all improved their scores, while Bushwick Middle School has larger score difference compared to Crown Heights Middle School.
+
+From the above density plots, it is easy to see that the 6th grade of Bushwick Middle School has the largest score difference, which is **4.138298**. Consequently, it has an average score improvement in the score of around 4, and the proficiency level will increase as well. Moreover, the 6th grade of Crown Heights Middle School has the smallest score difference, which is **0.533333**.
+
+We need to pay particular attention to the 6th grade of Crown Heights Middle School. In the graph, it has two clear peaks, which means that most of its 6th-grade students have small score difference, and a small part of its 6th-grade students has large score improvements.
+
+## Part 4: Individual Performance Matters
+
+In order to have a better understanding of the students' performance, I tracked the performance of each individual student in the dataset to specifically research whether the student improves the reading skills or no during the past year based on the F&P Proficiency Level and their own improvements.
+
+I counted the number of students who **improve, decline and maintain** the proficiency level, and I had the following results: 
+
+```{r, echo=F, fig.align='center', fig.height=3.9}
+df<-data.frame(table(new$School.Name, new$Grade.Level,new$result))
+df$Var2<-ifelse(df$Var2=="5.0","5 th Grade","6 th Grade")
+colnames(df)<-c("School","Grade","Result","Count")
+ggplot(df, aes(x=Grade, y=Count, fill=Result)) +
+    geom_bar(stat="identity", position=position_dodge(),color="white")+
+  geom_text(aes(label=Count), position=position_dodge(width=0.9), size=4, color="black",vjust = 0.0005)+
+  facet_grid(.~df$School)+
+   theme(plot.title = element_text(hjust = 0.5), legend.position = "bottom")+
+  labs(title="Individual Result", x="")
+   #scale_fill_brewer(palette="Spectral")
+```
+
+The total impoved students of Bushwick Middle School is **38+54=92** students, and Crown Heights Middle School has **20+2=22** students. We need to consider the persentage: **$\frac{92}{180(total\ available\ BM\ students)}=51.11$\%** of the Bushwick Middle School students improve themselves compared to their own proficiency levels one year ago. On the contrast, only **$\frac{22}{88(total\ available\ CH\ students)}=25$\%** of the Crown Heights Middle School students improve themselves compared to their own proficiency levels one year ago.
+
+```{r, echo=F,eval=F}
+92/sum(df[df$School=="Bushwick Middle School",]$Count)
+22/sum(df[df$School=="Crown Heights Middle School",]$Count)
+```
+
+# Conclusion and Notes
+
+Bushwick Middle School and Crown Heights Middle School both improved their scores in readings after one year, while we need to pay more attention to the proficiency level as the increasing score might due to the nature improvement without the training. Crown Heights Middle School shows some decrease in the past year in the proficiency level but it shows a better ability to transform bad performance students to good performance students. 
+
+Besides this, we can try to find the reasons why some students of Crown Heights has relatively bad performance compared to their proficiency level one year before. Crown Heights Middle School seems to decline in the performance, it is because the students are generally good before they participate in this F&P assessment, so they do not have big room to improve their readings. However, **90.9%** of those students who have bad performance becomes good performance students after one year in Crown Heights Middle School. The same rate in Bushwick Middle School is **65.59%**. This result shows that Crown Heights is good at transforming bad performance students to good performance students. 
+
+The next stage of this analysis is to find better approaches to improve those students in Crown Heights Middle School after they achieve some degree of reading proficiency level. Otherwise, the students of Bushwick Middle School will face a similar situation(decrease in performance) when they have a big percentage of students of good performance at the beginning of the year.
+
+Other things that we need to notice: The sample is still too small to have a big conclusion, and it will be better to analyze more data as needed. Also, the calculation not shown in the report could be seen at the end of the rmd file.
+
+```{r gap.general,echo=F, eval=F}
+#BM
+BM.gap.weak<-BM[(BM$BOY.PL=="Remedial") | (BM$BOY.PL=="Below Proficient"),]
+BM.gap.improve<-BM.gap.weak[(BM.gap.weak$EOY.PL=="Advanced") | (BM.gap.weak$EOY.PL=="Proficient"),]
+dim(BM.gap.improve)[1]/dim(BM.gap.weak)[1]
+#CH
+CH.gap.weak<-CH[(CH$BOY.PL=="Remedial") | (CH$BOY.PL=="Below Proficient"),]
+CH.gap.improve<-CH.gap.weak[(CH.gap.weak$EOY.PL=="Advanced") | (CH.gap.weak$EOY.PL=="Proficient"),]
+dim(CH.gap.improve)[1]/dim(CH.gap.weak)[1]
+```
+
+```{r gap, echo=F, eval=F}
+# BM.5
+BM.5.weak<-BM.5[(BM.5$BOY.PL=="Remedial") | (BM.5$BOY.PL=="Below Proficient"),]
+BM.5.improve<-BM.5.weak[(BM.5.weak$EOY.PL=="Advanced")|(BM.5.weak$EOY.PL=="Proficient"),]
+dim(BM.5.improve)[1]/dim(BM.5.weak)[1]
+
+# BM.6
+BM.6.weak<-BM.6[(BM.6$BOY.PL=="Remedial") | (BM.6$BOY.PL=="Below Proficient"),]
+BM.6.improve<-BM.6.weak[(BM.6.weak$EOY.PL=="Advanced")|(BM.6.weak$EOY.PL=="Proficient"),]
+dim(BM.6.improve)[1]/dim(BM.6.weak)[1]
+
+# CH.5
+CH.5.weak<-CH.5[(CH.5$BOY.PL=="Remedial") | (CH.5$BOY.PL=="Below Proficient"),]
+CH.5.improve<-CH.5.weak[(CH.5.weak$EOY.PL=="Advanced")|(CH.5.weak$EOY.PL=="Proficient"),]
+dim(CH.5.improve)[1]/dim(CH.5.weak)[1]
+
+# CH.6
+# CH.6.weak<-CH.6[(CH.6$BOY.PL=="Remedial") | (CH.6$BOY.PL=="Below Proficient"),]
+# CH.6.improve<-CH.6.weak[(CH.6.weak$EOY.PL=="Advanced")|(CH.6.weak$EOY.PL=="Proficient"),]
+# dim(CH.6.improve)[1]/dim(CH.6.weak)[1]
+```
