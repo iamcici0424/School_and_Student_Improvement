@@ -1,5 +1,4 @@
-# School and Student Improvement
-
+# Education Data in School & Student Improvement
 Analyzing Data for Schoolwide and Individual Student Improvement
 
 ## Introduction
