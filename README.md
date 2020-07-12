@@ -19,10 +19,11 @@ In order to better understand the story behind the students' data, I analyzed th
 AF will utilize the results of this analysis as a reference to deliver equal educational opportunities for all the students regardless of their race and economic status. Beyond this analysis, AF as an engaged parter in the community will take this exercise as an example to discuss how to improve public education quality and enhance the students’ academic performance in the larger conversation.
 
 ## Data
-* [Sample Data](data/F&P_Sample_Data_Set.xlsx) Each row in the dataset represents a single student and contains the student’s beginning of year (BOY) and end of year (EOY) F&P reading scores.
+* [Sample Data](data/F&P_Sample_Data_Set.xlsx) 
+Each row in the dataset represents a single student and contains the student’s beginning of year (BOY) and end of year (EOY) F&P reading scores. It will be necessary to use the information contained within the “F&P Proficiency levels” tab to convert raw F&P scores into their respective proficiency levels
 
 ## Code
-* [RMD Code](code/AF_DA_Cici_Chen.Rmd)
+* [Rmd Code](code/AF_DA_Cici_Chen.Rmd)
 
 ## Reports
 * [RMarkdown PDF Report](doc/AF_DA_Cici_Chen.pdf)
