@@ -31,7 +31,7 @@ The goal of this analysis is to research the potential trend and results of the 
 The original dataset contains the information of students' **School Name**, **Grade level(5th, 6th)**, the student's beginning of year (**BOY**) and end of year (**EOY**) F&P reading scores.
 
 ```{r read.data, echo=F}
-dat<-read_excel("F&P Sample Data Set.xlsx",sheet = 1)
+dat<-read_excel("../data/F&P_Sample_Data_Set.xlsx",sheet = 1)
 dat<-data.frame(dat)
 ```
 
