@@ -2,13 +2,9 @@
 
 **Time**: January 2020
 
-**Individual Project**:
-
-Cici Chen cc4291@columbia.edu
-
 **Goal**: 
 
-Analyzing educational data from AF for Schoolwide and comparzing individual student improvement, and providing valuable thoughts for further research.
+This is a small individual project, including analyzing educational data from AF for Schoolwide and comparzing individual student improvement, and providing valuable thoughts for further research.
 
 ## Introduction
 
