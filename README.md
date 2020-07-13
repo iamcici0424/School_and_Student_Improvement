@@ -6,6 +6,15 @@
 
 This is a small individual project, including analyzing educational data from AF for Schoolwide and comparzing individual student improvement, and providing valuable thoughts for further research.
 
+Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
+
+```
+proj/
+├── data/ data used in this project
+├── code/ codes run
+└── doc/ instruction, pdf reports, and presentation slides if present
+```
+
 ## Introduction
 
 As part of this project is to close the achievement gap for our scholars, AF enroll students from neighborhoods that traditionally have low student achievement. As a consequence, it is not surprising that students will enter the 5th grade significantly below grade level. AF are committed to helping all students read at grade level by the end of 8th grade.
